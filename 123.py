@@ -8,30 +8,43 @@ df_csv.info()
 
 #========sex轉成0 or 1============
 
-
 def replace_sex(x):
     return x - 1
 
-#sex轉成0 or 1
+#========sex轉成0 or 1===========
 
 
 df_csv["Sex"] = df_csv["Sex"].apply(replace_sex)
 
-#========df ppd replace (nan ==> 0)============
+#========df(nan ==> 0)============
 
 df_csv["PPD"].fillna(0, inplace=True)
 df_csv["Voice handicap index - 10"].fillna(0, inplace=True)
 
-# 資料處理
+
+#==============normalization================
+
+def replace_nor_age(x):
+    return x / 50
+
+def replace_nor_index(x):
+    return x / 40
+
+df_csv["Voice handicap index - 10"] = df_csv["Voice handicap index - 10"].apply(replace_nor_index)
+
+df_csv["Age"] = df_csv["Age"].apply(replace_nor_age)
+
+
+
 
 y = df_csv["Disease category"].to_numpy().reshape(-1, 1)
 print("資料label總數(矩陣): ", y.shape)
 
-x = pd.concat([df_csv.iloc[0:2], df_csv[3:26]])
+# 資料處理
 
-print(df_csv["Voice handicap index - 10"])
+df_csv_1 = df_csv.drop(["Disease category","ID"],axis=1)
 
-
+x = df_csv_1.to_numpy()
 
 
 
