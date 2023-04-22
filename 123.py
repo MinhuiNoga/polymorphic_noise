@@ -78,8 +78,3 @@ medical_x = y_pred.reshape(-1,1)
 
 print(medical_x)
 
-
-
-
-
-
