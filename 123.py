@@ -6,9 +6,16 @@ from sklearn.svm import LinearSVC
 from sklearn.pipeline import make_pipeline
 from sklearn.svm import SVC
 from keras.utils import np_utils
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.multiclass import OneVsOneClassifier
+
+
+import numpy as np
+import pandas as pd
+
+
 
 
 # 資料判斷
