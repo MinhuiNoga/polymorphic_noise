@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.multiclass import OneVsOneClassifier
 
+
 # 資料判斷
 df_csv = pd.read_csv("Training Dataset/training datalist.csv")
 print("資料資訊")
@@ -19,8 +20,6 @@ df_csv.info()
 
 def replace_sex(x):
     return x - 1
-
-#========sex轉成0 or 1===========
 
 
 df_csv["Sex"] = df_csv["Sex"].apply(replace_sex)
@@ -55,15 +54,16 @@ df_csv_1 = df_csv.drop(["Disease category","ID"],axis=1)
 x = df_csv_1.to_numpy()
 
 
-y = np_utils.to_categorical(y)
+y_one_hot = np_utils.to_categorical(y)
 
-y = np.argmax(y,axis=1)
+y_one_hot = np.argmax(y_one_hot, axis=1)
 
-
+print(y_one_hot)
 
 #=============svm預測===============
 
-x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.8, random_state=42)
+
+x_train, x_test, y_train, y_test = train_test_split(x, y_one_hot, test_size=0.8, random_state=42)
 
 clf = OneVsOneClassifier(SVC(kernel="linear"))
 
@@ -76,5 +76,6 @@ y_pred = clf.predict(x)
 
 medical_x = y_pred.reshape(-1,1)
 
-print(medical_x)
+
+
 
