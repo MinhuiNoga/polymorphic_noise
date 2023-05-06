@@ -12,6 +12,7 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.multiclass import OneVsOneClassifier
 
 
+
 # 資料判斷
 df_csv = pd.read_csv("Training Dataset/training datalist.csv")
 print("資料資訊")
