@@ -160,5 +160,55 @@ for i, voice_id in enumerate(voice_train_id):
     train_data = pd.concat([train_data, df])
 
 x_autoi = train_data.iloc[:, :-5]
+voice_x = x_autoi.values
 
-print(x_autoi)
+x_train_2, x_test_2, y_train_2, y_test_2 = train_test_split(voice_x, y_one_hot, test_size=0.8, random_state=42)
+
+clf.fit(x_train_2, y_train_2)
+
+voice_x_1 = clf.predict(voice_x).reshape(-1, 1)
+
+print(voice_x_1)
+
+voice_x_1 = voice_x_1 / 5
+medical_x = medical_x / 5
+
+voice_x_1 = voice_x_1.reshape(-1, 1)
+
+medical_x = medical_x.reshape(-1, 1)
+
+merge_svm = np.concatenate((voice_x_1, medical_x, x, voice_x), axis=1)
+
+print(merge_svm)
+
+formal_x_train, formal_x_test, formal_y_train, formal_y_test = train_test_split(merge_svm, y, test_size=0.25,
+                                                                                random_state=33)
+'''
+y轉成one-hot編碼
+'''
+formal_y_train = np_utils.to_categorical(formal_y_train)
+
+formal_y_test = np_utils.to_categorical(formal_y_test)
+
+print(formal_x_test.shape)
+print(formal_x_train.shape)
+print(formal_y_test.shape)
+print(formal_y_train.shape)
+
+'''
+建立模型並引入
+'''
+import tensorflow as tf
+
+model = tf.keras.Sequential()
+
+model.add(tf.keras.layers.Dense(300, activation="relu", input_shape=(1000,), input_dim=784))
+model.add(tf.keras.layers.Dense(150, activation="sigmoid"))
+model.add(tf.keras.layers.Dense(75, activation="sigmoid"))
+model.add(tf.keras.layers.Dense(6, activation="softmax"))
+
+model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=['accuracy'])
+
+history = model.fit(formal_x_train, formal_y_train, batch_size=20, epochs=20, verbose=1, validation_data=(
+    formal_x_test,
+    formal_y_test))
