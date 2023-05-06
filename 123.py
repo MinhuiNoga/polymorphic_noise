@@ -182,18 +182,26 @@ merge_svm = np.concatenate((voice_x_1, medical_x, x, voice_x), axis=1)
 print(merge_svm)
 
 formal_x_train, formal_x_test, formal_y_train, formal_y_test = train_test_split(merge_svm, y, test_size=0.25,
-                                                                                random_state=33)
+                                                                                random_state=42)
 '''
 y轉成one-hot編碼
 '''
-formal_y_train = np_utils.to_categorical(formal_y_train)
+formal_y_train = formal_y_train - 1
+formal_y_test = formal_y_test - 1
 
-formal_y_test = np_utils.to_categorical(formal_y_test)
+formal_y_train = np_utils.to_categorical(formal_y_train, num_classes=5)
+formal_y_test = np_utils.to_categorical(formal_y_test, num_classes=5)
+
+print(merge_svm.shape)
+print(y.shape)
 
 print(formal_x_test.shape)
 print(formal_x_train.shape)
 print(formal_y_test.shape)
 print(formal_y_train.shape)
+
+print(formal_x_train)
+print(formal_y_train)
 
 '''
 建立模型並引入
@@ -202,13 +210,15 @@ import tensorflow as tf
 
 model = tf.keras.Sequential()
 
-model.add(tf.keras.layers.Dense(300, activation="relu", input_shape=(1000,), input_dim=784))
-model.add(tf.keras.layers.Dense(150, activation="sigmoid"))
-model.add(tf.keras.layers.Dense(75, activation="sigmoid"))
-model.add(tf.keras.layers.Dense(6, activation="softmax"))
+model.add(tf.keras.layers.Dense(512, activation="relu", input_dim=54))
+model.add(tf.keras.layers.Dense(256, activation="relu"))
+model.add(tf.keras.layers.Dense(128, activation="relu"))
+model.add(tf.keras.layers.Dense(64, activation="relu"))
+model.add(tf.keras.layers.Dropout(0.2))
+model.add(tf.keras.layers.Dense(5, activation="softmax"))
 
 model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=['accuracy'])
 
-history = model.fit(formal_x_train, formal_y_train, batch_size=20, epochs=20, verbose=1, validation_data=(
-    formal_x_test,
-    formal_y_test))
+history = model.fit(formal_x_train, formal_y_train, batch_size=5, epochs=20, verbose=1,validation_data=(formal_x_test
+                                                                                                        ,formal_y_test))
+
