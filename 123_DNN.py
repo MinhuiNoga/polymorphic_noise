@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-
+from scipy.stats import skew
 from sklearn.multiclass import OneVsOneClassifier
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import make_pipeline
@@ -9,7 +9,14 @@ from keras.utils import np_utils
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.multiclass import OneVsOneClassifier
+
+
+import tensorflow as tf
+from tensorflow.keras.layers import Activation, BatchNormalization, Dense, LayerNormalization
+from tensorflow.keras.models import Sequential, load_model
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, recall_score
 
 
 # 資料判斷
@@ -59,23 +66,57 @@ x = df_csv_1.to_numpy()
 
 y_one_hot = np_utils.to_categorical(y)
 
-y_one_hot = np.argmax(y_one_hot, axis=1)
-
+# 删除第0列，将 y_one_hot 变成维度为 (800, 5) 的数组
+y_one_hot = np.delete(y_one_hot, 0, axis=1)
 print(y_one_hot)
 
-# =============svm預測===============
+# ===============data切分=================
+training_x, x_test, training_y, y_test = train_test_split(
+    x, y_one_hot, test_size=0.2, random_state=42)
+print("training_x shape :", training_x.shape, ", x_test shape :", x_test.shape)
+print("training_y shape :", training_y.shape, ", y_test shape :", y_test.shape)
 
 
-x_train, x_test, y_train, y_test = train_test_split(
-    x, y_one_hot, test_size=0.8, random_state=42)
+# ================DNN=========================
 
-clf = OneVsOneClassifier(SVC(kernel="linear"))
+# 在 Keras 裡面我們可以很簡單的使用 Sequential 的方法建建立一個 Model
+model = Sequential()
+# 加入 hidden layer-1 of 78 neurons 指定 input_dim 為 26  (有 26 個特徵)
+model.add(Dense(78, input_dim=26))
+# 使用 'sigmoid' 當作 activation function
+model.add(Activation('relu'))
+# 加入 hidden layer-2 of 256 neurons
+model.add(Dense(52))
+# 使用 'sigmoid' 當作 activation function
+model.add(Activation('relu'))
+# 加入 hidden layer-3 of 128 neurons
+model.add(Dense(26))
+# 使用 'sigmoid' 當作 activation function
+model.add(Activation('relu'))
+# 加入 output layer of 10 neurons
+model.add(Dense(5))
+# 使用 'softmax' 當作 activation function
+model.add(Activation('softmax'))
 
-clf.fit(x_train, y_train)
 
-y_pred = clf.predict(x)
+# 定義訓練方式
+model.compile(loss='categorical_crossentropy',
+              optimizer='adam', metrics=['accuracy'])
+
+# 開始訓練
+train_results = model.fit(x=training_x,
+                          y=training_y, validation_split=0.1,
+                          epochs=10, batch_size=50, verbose=2,
+                          callbacks=[EarlyStopping(monitor='val_loss', patience=5, mode='auto'),
+                                     ModelCheckpoint("csv_DNN.h5", save_best_only=True)]
+                          )
 
 
-# =============把資料丟入第2階段==============
+# ==========訓練資料預測結果=========
 
-medical_x = y_pred.reshape(-1, 1)
+y_pred = model.predict(df_csv.iloc[:, :-1]).argmax(axis=1)
+y_true = df_csv['Disease category'] - 1
+
+results_recall = recall_score(y_true, y_pred, average=None)
+print("Training UAR(Unweighted Average Recall) :", results_recall.mean())
+ConfusionMatrixDisplay(confusion_matrix(y_true, y_pred)).plot(cmap='Blues')
