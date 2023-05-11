@@ -31,7 +31,6 @@ df_csv.info()
 def replace_sex(x):
     return x - 1
 
-
 df_csv["Sex"] = df_csv["Sex"].apply(replace_sex)
 
 # ========df(nan ==> 0)============
