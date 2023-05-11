@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 import pandas as pd
 
@@ -37,8 +38,7 @@ df_csv_1 = df_csv.drop(["Disease category", "ID"], axis=1)
 
 x = df_csv_1.to_numpy()
 
-
-
+np.load("")
 
 voice_model = tf.keras.models.load_model("AI_CUP_acoustic_sample_model.h5")
 med_model = tf.keras.models.load_model("AI_CUP_medical_sample_model.h5")
