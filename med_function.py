@@ -53,25 +53,4 @@ print("資料label總數(矩陣): ", y.shape)
 df_csv_1 = df_csv.drop(["Disease category", "ID"], axis=1)
 
 x = df_csv_1.to_numpy()
-
-y_one_hot = np_utils.to_categorical(y)
-
-y_one_hot = np.argmax(y_one_hot, axis=1)
-
-print(y_one_hot)
-
-# =============svm預測===============
-
-
-x_train, x_test, y_train, y_test = train_test_split(
-    x, y_one_hot, test_size=0.8, random_state=42)
-
-clf = OneVsOneClassifier(SVC(kernel="linear"))
-
-clf.fit(x_train, y_train)
-
-y_pred = clf.predict(x)
-
-# =============把資料丟入第2階段==============
-
-medical_x = y_pred.reshape(-1, 1)
+np.save("med_array", x)

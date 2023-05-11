@@ -20,6 +20,8 @@ import pandas as pd
 
 # 資料判斷
 df_csv = pd.read_csv("Training Dataset/training datalist.csv")
+
+#test_csv =
 print("資料資訊")
 df_csv.info()
 
@@ -67,11 +69,9 @@ print(y_one_hot)
 # =============svm預測===============
 
 
-x_train, x_test, y_train, y_test = train_test_split(x, y_one_hot, test_size=0.8, random_state=42)
-
 clf = OneVsOneClassifier(SVC(kernel="linear"))
 
-clf.fit(x_train, y_train)
+clf.fit(x, y_one_hot)
 
 y_pred = clf.predict(x)
 

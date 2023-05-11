@@ -34,16 +34,13 @@ df_csv["Age"] = df_csv["Age"].apply(replace_nor_age)
 
 y = df_csv["Disease category"].to_numpy().reshape(-1, 1)
 
-df_csv_1 = df_csv.drop(["Disease category", "ID"], axis=1)
+csv_x = np.load("med_array.npy")
+mfcc_x = np.load("mfcc_array.npy")
 
-x = df_csv_1.to_numpy()
+voice_model = tf.keras.models.load_model("fsafsafsafsaf.h5")
+med_model = tf.keras.models.load_model("csv_DNN.h5")
 
-np.load("")
+voice_model_x = voice_model.predict()
+med_model_x = voice_model.predict(csv_x)
 
-voice_model = tf.keras.models.load_model("AI_CUP_acoustic_sample_model.h5")
-med_model = tf.keras.models.load_model("AI_CUP_medical_sample_model.h5")
-
-voice_model_x = voice_model.predict(a)
-med_model_x = voice_model.predict(b)
-
-train_df = pd.concat([x])
+train_df = pd.concat([csv_x, med_model_x, mfcc_x, ])
