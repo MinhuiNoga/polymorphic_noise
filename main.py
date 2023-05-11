@@ -11,15 +11,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.multiclass import OneVsOneClassifier
 
-
-
 # 資料判斷
 df_csv = pd.read_csv("Training Dataset/training datalist.csv")
 print("資料資訊")
 df_csv.info()
 
-# ========sex轉成0 or 1============
 
+# ========sex轉成0 or 1============
 
 def replace_sex(x):
     return x - 1
@@ -48,7 +46,6 @@ df_csv["Voice handicap index - 10"] = df_csv["Voice handicap index - 10"].apply(
 
 df_csv["Age"] = df_csv["Age"].apply(replace_nor_age)
 
-
 # =============x,y==================
 
 y = df_csv["Disease category"].to_numpy().reshape(-1, 1)
@@ -56,7 +53,6 @@ print("資料label總數(矩陣): ", y.shape)
 df_csv_1 = df_csv.drop(["Disease category", "ID"], axis=1)
 
 x = df_csv_1.to_numpy()
-
 
 y_one_hot = np_utils.to_categorical(y)
 
@@ -75,7 +71,6 @@ clf = OneVsOneClassifier(SVC(kernel="linear"))
 clf.fit(x_train, y_train)
 
 y_pred = clf.predict(x)
-
 
 # =============把資料丟入第2階段==============
 

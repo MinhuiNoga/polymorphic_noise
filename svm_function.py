@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+from keras.layers import Dropout
 
 from sklearn.multiclass import OneVsOneClassifier
 from sklearn.svm import LinearSVC
@@ -253,9 +254,15 @@ model.add(tf.keras.layers.Dense(512, activation="relu", input_dim=80))
 
 model.add(tf.keras.layers.Dense(256, activation="relu"))
 
+model.add(Dropout(0.3))
+
 model.add(tf.keras.layers.Dense(128, activation="relu"))
 
+model.add(Dropout(0.2))
+
 model.add(tf.keras.layers.Dense(64, activation="relu"))
+
+model.add(Dropout(0.1))
 
 model.add(tf.keras.layers.Dense(5, activation="softmax"))
 
