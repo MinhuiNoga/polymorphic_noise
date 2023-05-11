@@ -164,6 +164,8 @@ for i, voice_id in enumerate(voice_train_id):
 x_autoi = train_data.iloc[:, :-5]
 voice_x = x_autoi.values
 
+# ================標準化及歸一化
+
 mean = np.mean(voice_x, axis=1)
 std = np.std(voice_x, axis=1)
 min = np.min(voice_x, axis=1)
@@ -179,8 +181,9 @@ mfcc_mix = np.concatenate((mfcc_standardized, mfcc_normalized), axis=1)
 
 print(mfcc_mix.shape)
 
-x_train_2, x_test_2, y_train_2, y_test_2 = train_test_split(mfcc_mix, y_one_hot, test_size=0.8, random_state=42)
+# 切割資料並svm
 
+x_train_2, x_test_2, y_train_2, y_test_2 = train_test_split(mfcc_mix, y_one_hot, test_size=0.8, random_state=42)
 
 clf = OneVsOneClassifier(SVC(kernel="linear"))
 
@@ -258,7 +261,7 @@ model.add(tf.keras.layers.Dense(5, activation="softmax"))
 
 model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=['accuracy'])
 
-history = model.fit(formal_x_train, formal_y_train, batch_size=5, epochs=20, verbose=1, validation_data=(
+history = model.fit(formal_x_train, formal_y_train, batch_size=5, epochs=1000, verbose=1, validation_data=(
     formal_x_test, formal_y_test), callbacks=[RecallCallback()])
 
 formal_pred_y = model.predict(formal_x_test)
