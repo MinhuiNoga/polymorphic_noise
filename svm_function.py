@@ -20,10 +20,12 @@ import pandas as pd
 
 # 資料判斷
 df_csv = pd.read_csv("Training Dataset/training datalist.csv")
-
-#test_csv =
 print("資料資訊")
 df_csv.info()
+
+# 引入test
+
+df_csv_test = pd.read_csv("Public Testing Dataset/test_datalist_public.csv")
 
 
 # ========sex轉成0 or 1============
@@ -31,12 +33,17 @@ df_csv.info()
 def replace_sex(x):
     return x - 1
 
+
 df_csv["Sex"] = df_csv["Sex"].apply(replace_sex)
+df_csv_test["Sex"] = df_csv_test["Sex"].apply(replace_sex)
 
 # ========df(nan ==> 0)============
 
 df_csv["PPD"].fillna(0, inplace=True)
 df_csv["Voice handicap index - 10"].fillna(0, inplace=True)
+
+df_csv_test["PPD"].fillna(0, inplace=True)
+df_csv_test["Voice handicap index - 10"].fillna(0, inplace=True)
 
 
 # ==============normalization================
@@ -50,43 +57,37 @@ def replace_nor_index(num1):
 
 
 df_csv["Voice handicap index - 10"] = df_csv["Voice handicap index - 10"].apply(replace_nor_index)
-
 df_csv["Age"] = df_csv["Age"].apply(replace_nor_age)
 
-y = df_csv["Disease category"].to_numpy().reshape(-1, 1)
-print("資料label總數(矩陣): ", y.shape)
+df_csv_test["Voice handicap index - 10"] = df_csv_test["Voice handicap index - 10"].apply(replace_nor_index)
+df_csv_test["Age"] = df_csv_test["Age"].apply(replace_nor_age)
+
+train_y = df_csv["Disease category"].to_numpy()
+
 df_csv_1 = df_csv.drop(["Disease category", "ID"], axis=1)
+train_x = df_csv_1.to_numpy()
 
-x = df_csv_1.to_numpy()
-
-y_one_hot = np_utils.to_categorical(y)
-
-y_one_hot = np.argmax(y_one_hot, axis=1)
-
-print(y_one_hot)
+df_csv_2 = df_csv_test.drop(["ID"], axis=1)
+test_x = df_csv_2.to_numpy()
 
 # =============svm預測===============
 
 
 clf = OneVsOneClassifier(SVC(kernel="linear"))
 
-clf.fit(x, y_one_hot)
+clf.fit(train_x, train_y)
 
-y_pred = clf.predict(x)
+y_pred = clf.predict(test_x)
 
-# =============把資料丟入第2階段==============
-
-medical_x = y_pred.reshape(-1, 1)
-
+print(y_pred)
 # =============處理音訊檔=====================
 
 
-df_csv_voice = df_csv.loc[df_csv['Disease category'].isin([1, 2, 3, 4, 5]), ['ID', 'Disease category']]
+df_csv_voice = df_csv.loc[:, ['ID']]
+df_csv_test_1 = df_csv_test.loc[:, ['ID']]
 
 df_csv_voice['wav_path'] = df_csv_voice['ID'].map("./Training Dataset/training_voice_data/{}.wav".format)
-
-print("Disease category in source_df :", df_csv_voice['Disease category'].unique())
-print("source_df :\n", df_csv_voice)
+df_csv_test_1['wav_path'] = df_csv_test_1['ID'].map("./Public Testing Dataset/test_data_public/{}.wav".format)
 
 
 def audio_to_mfccs(filename, sample_rate=44100, offset=0, duration=None):
@@ -112,117 +113,65 @@ def audio_to_mfccs(filename, sample_rate=44100, offset=0, duration=None):
 voice_train_id = df_csv_voice["ID"].tolist()
 train_data = pd.DataFrame()
 
+voice_test_id = df_csv_test_1["ID"].tolist()
+test_data = pd.DataFrame()
+
+for i, voice_id in enumerate(voice_test_id):
+    mfccs_feature = audio_to_mfccs(df_csv_test_1[df_csv_test_1["ID"] == voice_id]["wav_path"].values[0])
+    df = pd.DataFrame()
+    for j in range(26):
+        df_i = pd.DataFrame(np.array(mfccs_feature[0][j]).reshape(1, -1))
+        df = pd.concat([df, df_i], axis=1)
+    test_data = pd.concat([test_data, df])
+
 for i, voice_id in enumerate(voice_train_id):
     mfccs_feature = audio_to_mfccs(df_csv_voice[df_csv_voice["ID"] == voice_id]["wav_path"].values[0])
     df = pd.DataFrame()
     for j in range(26):
         df_i = pd.DataFrame(np.array(mfccs_feature[0][j]).reshape(1, -1))
         df = pd.concat([df, df_i], axis=1)
-
-    label = df_csv_voice[df_csv_voice["ID"] == voice_id]["Disease category"].values[0]
-
-    # one-hot編碼
-    if label == 1:
-        df['c1'] = 1
-        df['c2'] = 0
-        df['c3'] = 0
-        df['c4'] = 0
-        df['c5'] = 0
-    elif label == 2:
-        df['c1'] = 0
-        df['c2'] = 1
-        df['c3'] = 0
-        df['c4'] = 0
-        df['c5'] = 0
-    elif label == 3:
-        df['c1'] = 0
-        df['c2'] = 0
-        df['c3'] = 1
-        df['c4'] = 0
-        df['c5'] = 0
-    elif label == 4:
-        df['c1'] = 0
-        df['c2'] = 0
-        df['c3'] = 0
-        df['c4'] = 1
-        df['c5'] = 0
-    elif label == 5:
-        df['c1'] = 0
-        df['c2'] = 0
-        df['c3'] = 0
-        df['c4'] = 0
-        df['c5'] = 1
-    else:
-        df['c1'] = np.nan
-        df['c2'] = np.nan
-        df['c3'] = np.nan
-        df['c4'] = np.nan
-        df['c5'] = np.nan
-
     train_data = pd.concat([train_data, df])
 
 x_autoi = train_data.iloc[:, :-5]
 voice_x = x_autoi.values
 
-# ================標準化及歸一化
+voice_x_test = test_data.iloc[:, :-5]
+voice_x_test = voice_x_test.values
 
-mean = np.mean(voice_x, axis=1)
-std = np.std(voice_x, axis=1)
-min = np.min(voice_x, axis=1)
-max = np.max(voice_x, axis=1)
+# ================標準化及歸一化====
 
 scaler = StandardScaler()
 mfcc_standardized = scaler.fit_transform(voice_x.T).T
+mfcc_standardized_test = scaler.fit_transform(voice_x_test.T).T
 
 scaler = MinMaxScaler()
 mfcc_normalized = scaler.fit_transform(voice_x.T).T
+mfcc_normalized_test = scaler.fit_transform(voice_x_test.T).T
 
 mfcc_mix = np.concatenate((mfcc_standardized, mfcc_normalized), axis=1)
+mfcc_mix_test = np.concatenate((mfcc_standardized_test, mfcc_normalized_test), axis=1)
 
-print(mfcc_mix.shape)
+clf_1 = OneVsOneClassifier(SVC(kernel="linear"))
+clf_1.fit(mfcc_mix, train_y)
 
-# 切割資料並svm
-
-x_train_2, x_test_2, y_train_2, y_test_2 = train_test_split(mfcc_mix, y_one_hot, test_size=0.8, random_state=42)
-
-clf = OneVsOneClassifier(SVC(kernel="linear"))
-
-clf.fit(x_train_2, y_train_2)
-
-voice_x_1 = clf.predict(mfcc_mix).reshape(-1, 1)
+voice_x_1 = clf_1.predict(mfcc_mix_test)
 
 voice_x_1 = voice_x_1 / 5
-medical_x = medical_x / 5
+y_pred = y_pred / 5
 
 voice_x_1 = voice_x_1.reshape(-1, 1)
+y_pred = y_pred.reshape(-1, 1)
 
-medical_x = medical_x.reshape(-1, 1)
+merge_svm_train = np.concatenate((train_y.reshape(-1, 1), train_y.reshape(-1, 1), train_x, mfcc_mix), axis=1)
+merge_svm_test = np.concatenate((voice_x_1, y_pred, test_x, mfcc_mix_test), axis=1)
 
-merge_svm = np.concatenate((voice_x_1, medical_x, x, mfcc_mix), axis=1)
-
-print(merge_svm)
-
-formal_x_train, formal_x_test, formal_y_train, formal_y_test = train_test_split(merge_svm, y, test_size=0.25,
-                                                                                random_state=42)
 '''
 y轉成one-hot編碼
 '''
-formal_y_train = formal_y_train - 1
-formal_y_test = formal_y_test - 1
 
-formal_y_train = np_utils.to_categorical(formal_y_train, num_classes=5)
-formal_y_test = np_utils.to_categorical(formal_y_test, num_classes=5)
+train_y = train_y - 1
 
-print(merge_svm.shape)
-print(y.shape)
-
-print(formal_x_test.shape)
-print(formal_x_train.shape)
-print(formal_y_test.shape)
-print(formal_y_train.shape)
-
-print(formal_x_train)
-print(formal_y_train)
+train_y = np_utils.to_categorical(train_y, num_classes=5)
 
 '''
 
@@ -249,7 +198,7 @@ from sklearn.metrics import classification_report
 
 model = tf.keras.Sequential()
 
-model.add(tf.keras.layers.Dense(512, activation="relu", input_dim=80))
+model.add(tf.keras.layers.Dense(512, activation="relu", input_dim=70))
 
 model.add(tf.keras.layers.Dense(256, activation="relu"))
 
@@ -267,11 +216,10 @@ model.add(tf.keras.layers.Dense(5, activation="softmax"))
 
 model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=['accuracy'])
 
-history = model.fit(formal_x_train, formal_y_train, batch_size=5, epochs=1000, verbose=1, validation_data=(
-    formal_x_test, formal_y_test), callbacks=[RecallCallback()])
+history = model.fit(merge_svm_train, train_y, batch_size=20, epochs=20, verbose=1, callbacks=[RecallCallback()])
 
-formal_pred_y = model.predict(formal_x_test)
-formal_pred_y = (formal_pred_y > 0.5).astype(int)
-
-target_names = ["Phonotrauma", "Incomplete glottic closure", "Vocal palsy", "Neoplasm", "Normal"]
-print(classification_report(formal_y_test, formal_pred_y, zero_division=1, target_names=target_names))
+formal_pred_y = model.predict(merge_svm_test)
+predicted_class = np.argmax(formal_pred_y, axis=1)
+print("formal_pred_y:", formal_pred_y)
+print("formal_pred_y.shape:", formal_pred_y.shape)
+print(predicted_class)

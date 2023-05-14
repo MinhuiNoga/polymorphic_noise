@@ -1,3 +1,4 @@
+import keras
 import numpy as np
 import pandas as pd
 import librosa
@@ -13,6 +14,7 @@ from sklearn.preprocessing import OneHotEncoder
 import tensorflow as tf
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, recall_score
+from keras.utils import pad_sequences
 
 df_csv = pd.read_csv("Training Dataset/training datalist.csv")
 print("資料資訊")
@@ -126,40 +128,46 @@ print(mfcc_standardized)
 scaler = MinMaxScaler()
 mfcc_normalized = scaler.fit_transform(x.T).T
 
-print(mfcc_normalized)
+print("正歸化:", mfcc_normalized)
+print("x.shape():", mfcc_normalized.shape)
 
-mfcc_mix = np.concatenate((mfcc_standardized, mfcc_normalized), axis=1)
+time_step = 10
+feature = 26
+
+n_samples = mfcc_normalized.shape[0] - time_step + 1
+X = np.zeros((n_samples, time_step, feature))
+
+for i in range(n_samples):
+    X[i] = mfcc_normalized[i:i+time_step]
+
+
+'''
+T = 5
+x = 1000
+
+time_arrat_data = np.zeros((996, T, 26))
+for i in range(5):
+    time_arrat_data[i] = mfcc_normalized[i:i + T]
+
+print(time_arrat_data.shape)
+'''
 
 y = np.array(y)
 
 y = y.reshape(-1, 1)
 
+y = y[:-9, :]
+
 y = y - 1
 
 y = np_utils.to_categorical(y, num_classes=5)
 
-train_x, test_x, train_y, test_y = train_test_split(mfcc_mix, y, random_state=42, test_size=0.2)
+print("x",X.shape)
+print("y",y.shape)
 
-model = tf.keras.Sequential()
+import numpy as np
+from keras.utils import np_utils
+from keras.layers import Input, Dense, Dropout, Embedding, Concatenate, Flatten
+from keras.models import Model
+from keras.callbacks import EarlyStopping
 
-model.add(tf.keras.layers.Dense(512, activation="relu", input_dim=52))
-
-model.add(tf.keras.layers.Dense(256, activation="relu"))
-model.add(tf.keras.layers.Dense(128, activation="relu"))
-
-model.add(tf.keras.layers.Dense(5, activation="softmax"))
-
-model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=['accuracy'])
-
-from keras.callbacks import Callback
-
-
-class RecallCallback(Callback):
-    def on_epoch_end(self, epoch, logs=None):
-        recall = logs.get("val_call")
-        if recall is not None:
-            print(f'val_recall: {recall:.4f}')
-
-
-history = model.fit(train_x, train_y, batch_size=5, epochs=100, verbose=1, validation_data=(
-    test_x, test_y), callbacks=[RecallCallback()])

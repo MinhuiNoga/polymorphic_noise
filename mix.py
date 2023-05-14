@@ -37,10 +37,12 @@ y = df_csv["Disease category"].to_numpy().reshape(-1, 1)
 csv_x = np.load("med_array.npy")
 mfcc_x = np.load("mfcc_array.npy")
 
-voice_model = tf.keras.models.load_model("fsafsafsafsaf.h5")
+# voice_model = tf.keras.models.load_model("fsafsafsafsaf.h5")
 med_model = tf.keras.models.load_model("csv_DNN.h5")
 
-voice_model_x = voice_model.predict()
-med_model_x = voice_model.predict(csv_x)
+# voice_model_x = voice_model.predict()
+med_model_x = med_model.predict(csv_x)
 
-train_df = pd.concat([csv_x, med_model_x, mfcc_x, ])
+train_df = pd.concat([csv_x, med_model_x, mfcc_x])
+
+print(train_df)

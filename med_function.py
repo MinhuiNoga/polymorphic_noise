@@ -54,3 +54,5 @@ df_csv_1 = df_csv.drop(["Disease category", "ID"], axis=1)
 
 x = df_csv_1.to_numpy()
 np.save("med_array", x)
+
+
