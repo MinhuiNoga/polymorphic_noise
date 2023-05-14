@@ -79,9 +79,7 @@ clf.fit(train_x, train_y)
 
 y_pred = clf.predict(test_x)
 
-print(y_pred)
 # =============處理音訊檔=====================
-
 
 df_csv_voice = df_csv.loc[:, ['ID']]
 df_csv_test_1 = df_csv_test.loc[:, ['ID']]
@@ -132,11 +130,14 @@ for i, voice_id in enumerate(voice_train_id):
         df = pd.concat([df, df_i], axis=1)
     train_data = pd.concat([train_data, df])
 
-x_autoi = train_data.iloc[:, :-5]
+x_autoi = train_data.iloc[:, :]
 voice_x = x_autoi.values
 
-voice_x_test = test_data.iloc[:, :-5]
+voice_x_test = test_data.iloc[:, :]
 voice_x_test = voice_x_test.values
+
+print(voice_x.shape)
+print(voice_x_test.shape)
 
 # ================標準化及歸一化====
 
@@ -151,10 +152,19 @@ mfcc_normalized_test = scaler.fit_transform(voice_x_test.T).T
 mfcc_mix = np.concatenate((mfcc_standardized, mfcc_normalized), axis=1)
 mfcc_mix_test = np.concatenate((mfcc_standardized_test, mfcc_normalized_test), axis=1)
 
+mfcc_y = np.load('mfcc_y.npy')
+mfcc_y = np.argmax(mfcc_y, axis=1)
+
+mfcc_y = mfcc_y + 1
+
+print(mfcc_y)
+
 clf_1 = OneVsOneClassifier(SVC(kernel="linear"))
-clf_1.fit(mfcc_mix, train_y)
+clf_1.fit(mfcc_mix, mfcc_y)
 
 voice_x_1 = clf_1.predict(mfcc_mix_test)
+
+print(voice_x_1)
 
 voice_x_1 = voice_x_1 / 5
 y_pred = y_pred / 5

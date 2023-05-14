@@ -1,66 +1,58 @@
-import tensorflow as tf
 import numpy as np
 import pandas as pd
-from keras.layers import Dropout
-
-from sklearn.multiclass import OneVsOneClassifier
-from sklearn.svm import LinearSVC
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
 import librosa
-from sklearn.svm import SVC
-from keras.utils import np_utils
+
+import tensorflow as tf
+from keras.layers import Activation, BatchNormalization, Dense, LayerNormalization, Dropout, LSTM
+from keras.models import Sequential, load_model
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.multiclass import OneVsOneClassifier
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, recall_score
+from sklearn.utils import shuffle
 
-import numpy as np
-import pandas as pd
+source_df = pd.read_csv('Training Dataset/training datalist.csv')
+print("source_df.shape :", source_df.shape)
+print("source_df.columns :", source_df.columns)
 
-df_csv = pd.read_csv("Training Dataset/training datalist.csv")
+source_df = source_df.loc[source_df['Disease category'].isin([1, 2, 3, 4, 5]), ['ID', 'Disease category']]
 
-df_csv_voice = df_csv.loc[df_csv['Disease category'].isin([1, 2, 3, 4, 5]), ['ID', 'Disease category']]
+# 在dataframe中加入要訓練的音檔路徑
+source_df['wav_path'] = source_df['ID'].map("./Training Dataset/training_voice_data/{}.wav".format)
 
-df_csv_voice['wav_path'] = df_csv_voice['ID'].map("./Training Dataset/training_voice_data/{}.wav".format)
+print("Disease category in source_df :", source_df['Disease category'].unique())
+print("source_df :\n", source_df)
 
-print("Disease category in source_df :", df_csv_voice['Disease category'].unique())
-print("source_df :\n", df_csv_voice)
+training_df, test_df = train_test_split(source_df, test_size=0.2, random_state=333)
+
+print("training_df shape :", training_df.shape, ", test_df shape :", test_df.shape)
 
 
+# define function
 def audio_to_mfccs(filename, sample_rate=44100, offset=0, duration=None):
-    voice, sample_rate = librosa.load(
-        filename, sr=sample_rate, offset=offset, duration=duration
-    )
+    voice, sample_rate = librosa.load(filename, sr=sample_rate, offset=offset, duration=duration)
 
-    n_fft = int(16 / 1000 * sample_rate)
-    hop_length = int(8 / 1000 * sample_rate)
-
-    mfcc_feature = librosa.feature.mfcc(
-        y=voice, sr=sample_rate, n_mfcc=13, n_fft=n_fft, hop_length=hop_length
-    )
+    n_fft = int(16 / 1000 * sample_rate)  # Convert 16 ms to samples
+    hop_length = int(8 / 1000 * sample_rate)  # Convert 8 ms to samples
+    mfcc_feature = librosa.feature.mfcc(y=voice, sr=sample_rate, n_mfcc=13, n_fft=n_fft, hop_length=hop_length)
 
     delta_mfcc_feature = librosa.feature.delta(mfcc_feature)
 
     mfccs = np.concatenate((mfcc_feature, delta_mfcc_feature))
-    mfccs_feature = np.transpose(mfccs)
+    mfccs_features = np.transpose(mfccs)  # all frames
 
-    return mfccs_feature
+    return mfccs_features
 
 
-voice_train_id = df_csv_voice["ID"].tolist()
-train_data = pd.DataFrame()
+training_id = training_df['ID'].tolist()
+training_data = pd.DataFrame()
+for id in training_id:
+    mfccs_feature = audio_to_mfccs(training_df[training_df['ID'] == id]['wav_path'].values[0])
+    df = pd.DataFrame(mfccs_feature)
+    # print("id :",id, ", number of frames :", df.shape[0])
 
-for i, voice_id in enumerate(voice_train_id):
-    mfccs_feature = audio_to_mfccs(df_csv_voice[df_csv_voice["ID"] == voice_id]["wav_path"].values[0])
-    df = pd.DataFrame()
-    for j in range(26):
-        df_i = pd.DataFrame(np.array(mfccs_feature[0][j]).reshape(1, -1))
-        df = pd.concat([df, df_i], axis=1)
-
-    label = df_csv_voice[df_csv_voice["ID"] == voice_id]["Disease category"].values[0]
-
-    # one-hot編碼
+    # 訓練資料標記
+    label = training_df[training_df['ID'] == id]['Disease category'].values[0]
     if label == 1:
         df['c1'] = 1
         df['c2'] = 0
@@ -98,26 +90,91 @@ for i, voice_id in enumerate(voice_train_id):
         df['c4'] = np.nan
         df['c5'] = np.nan
 
-    train_data = pd.concat([train_data, df])
+    training_data = pd.concat([training_data, df])
 
-x_autoi = train_data.iloc[:, :-5]
-voice_x = x_autoi.values
+print("training_data.shape :", training_data.shape)
 
-# ================標準化及歸一化
+x_train = training_data.iloc[:, :-5]
+y_train = training_data.iloc[:, -5:]
+print("x_train.shape, y_train.shape :", x_train.shape, y_train.shape)
+print("y_train.columns :", y_train.columns.tolist())
 
-mean = np.mean(voice_x, axis=1)
-std = np.std(voice_x, axis=1)
-min = np.min(voice_x, axis=1)
-max = np.max(voice_x, axis=1)
+X_train = tf.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+Y = y_train.values
 
-scaler = StandardScaler()
-mfcc_standardized = scaler.fit_transform(voice_x.T).T
+test_id = test_df['ID'].tolist()
+test_data = pd.DataFrame()
+for id in test_id:
+    mfccs_feature = audio_to_mfccs(test_df[test_df['ID'] == id]['wav_path'].values[0])
+    df = pd.DataFrame(mfccs_feature)
+    label = test_df[test_df['ID'] == id]['Disease category'].values[0]
+    if label == 1:
+        df['c1'] = 1
+        df['c2'] = 0
+        df['c3'] = 0
+        df['c4'] = 0
+        df['c5'] = 0
+    elif label == 2:
+        df['c1'] = 0
+        df['c2'] = 1
+        df['c3'] = 0
+        df['c4'] = 0
+        df['c5'] = 0
+    elif label == 3:
+        df['c1'] = 0
+        df['c2'] = 0
+        df['c3'] = 1
+        df['c4'] = 0
+        df['c5'] = 0
+    elif label == 4:
+        df['c1'] = 0
+        df['c2'] = 0
+        df['c3'] = 0
+        df['c4'] = 1
+        df['c5'] = 0
+    elif label == 5:
+        df['c1'] = 0
+        df['c2'] = 0
+        df['c3'] = 0
+        df['c4'] = 0
+        df['c5'] = 1
+    else:
+        df['c1'] = np.nan
+        df['c2'] = np.nan
+        df['c3'] = np.nan
 
-scaler = MinMaxScaler()
-mfcc_normalized = scaler.fit_transform(voice_x.T).T
+    test_data = pd.concat([test_data, df])
 
-mfcc_mix = np.concatenate((mfcc_standardized, mfcc_normalized), axis=1)
+print("training_data.shape :", test_data.shape)
 
-np.save("mfcc_array", mfcc_mix)
+x_val = test_data.iloc[:, :-5]
+y_val = test_data.iloc[:, -5:]
+print("x_val.shape, y_val.shape :", x_val.shape, y_val.shape)
+print("y_val.columns :", y_val.columns.tolist())
 
+model = tf.keras.Sequential()
+model = Sequential()
+model.add(LSTM(64, input_shape=(26, 1), return_sequences=True))
+model.add(LSTM(32, return_sequences=True))
+model.add(LSTM(16))
+model.add(Dense(5, activation='softmax'))
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.summary()
+history = model.fit(X_train, Y, batch_size=30000, epochs=20, validation_data=(x_val, y_val))
 
+y_true = test_df['Disease category'] - 1
+y_pred = []
+for id in test_df['ID'].tolist():
+    mfccs_feature = audio_to_mfccs(test_df[test_df['ID'] == id]['wav_path'].values[0])
+    df = pd.DataFrame(mfccs_feature)
+    frame_pred = model.predict(df)
+    frame_pred_results = frame_pred.argmax(axis=1)
+
+    person_pred = np.array([np.sum(frame_pred_results == 0), np.sum(frame_pred_results == 1),
+                            np.sum(frame_pred_results == 2), np.sum(frame_pred_results == 3),
+                            np.sum(frame_pred_results == 4)]).argmax()  # 注意!如三類別相同票數，預測會為0
+    y_pred.append(person_pred)
+
+y_pred = np.array(y_pred)
+y_pred = y_pred.reshape(-1, 1)
+print(y_pred)
