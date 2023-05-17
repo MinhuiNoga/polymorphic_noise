@@ -34,8 +34,8 @@ df_csv["Age"] = df_csv["Age"].apply(replace_nor_age)
 
 y = df_csv["Disease category"].to_numpy().reshape(-1, 1)
 
-csv_x = np.load("med_array.npy")
-mfcc_x = np.load("mfcc_array.npy")
+csv_x = np.load("npy/med_array.npy")
+mfcc_x = np.load("npy/mfcc_array.npy")
 
 # voice_model = tf.keras.models.load_model("fsafsafsafsaf.h5")
 med_model = tf.keras.models.load_model("csv_DNN.h5")

@@ -152,7 +152,7 @@ mfcc_normalized_test = scaler.fit_transform(voice_x_test.T).T
 mfcc_mix = np.concatenate((mfcc_standardized, mfcc_normalized), axis=1)
 mfcc_mix_test = np.concatenate((mfcc_standardized_test, mfcc_normalized_test), axis=1)
 
-mfcc_y = np.load('mfcc_y.npy')
+mfcc_y = np.load('npy/mfcc_y.npy')
 mfcc_y = np.argmax(mfcc_y, axis=1)
 
 mfcc_y = mfcc_y + 1

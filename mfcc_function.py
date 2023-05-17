@@ -1,15 +1,9 @@
+import librosa
 import numpy as np
 import pandas as pd
-import librosa
-
-import tensorflow as tf
-from keras.layers import Activation, BatchNormalization, Dense, LayerNormalization, Dropout, LSTM
-from keras.models import Sequential, load_model
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-
+from keras.layers import Dense, LSTM
+from keras.models import Sequential
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, recall_score
-from sklearn.utils import shuffle
 
 source_df = pd.read_csv('Training Dataset/training datalist.csv')
 print("source_df.shape :", source_df.shape)
@@ -99,8 +93,20 @@ y_train = training_data.iloc[:, -5:]
 print("x_train.shape, y_train.shape :", x_train.shape, y_train.shape)
 print("y_train.columns :", y_train.columns.tolist())
 
-X_train = tf.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+time_step = 10
+feature = 26
+
+n_samples = x_train.shape[0] - time_step + 1
+
+X = np.zeros((n_samples, time_step, feature))
+for i in range(n_samples):
+    X[i] = x_train[i:i + time_step]
+
+print(X.shape)
+
+y_train = y_train[:-9]
 Y = y_train.values
+
 
 test_id = test_df['ID'].tolist()
 test_data = pd.DataFrame()
@@ -108,6 +114,7 @@ for id in test_id:
     mfccs_feature = audio_to_mfccs(test_df[test_df['ID'] == id]['wav_path'].values[0])
     df = pd.DataFrame(mfccs_feature)
     label = test_df[test_df['ID'] == id]['Disease category'].values[0]
+
     if label == 1:
         df['c1'] = 1
         df['c2'] = 0
@@ -142,6 +149,8 @@ for id in test_id:
         df['c1'] = np.nan
         df['c2'] = np.nan
         df['c3'] = np.nan
+        df['c4'] = np.nan
+        df['c5'] = np.nan
 
     test_data = pd.concat([test_data, df])
 
@@ -149,25 +158,49 @@ print("training_data.shape :", test_data.shape)
 
 x_val = test_data.iloc[:, :-5]
 y_val = test_data.iloc[:, -5:]
+
+
+time_step = 10
+feature = 26
+
+n_samples = x_val.shape[0] - time_step + 1
+
+X_val = np.zeros((n_samples, time_step, feature))
+for i in range(n_samples):
+    X[i] = x_val[i:i + time_step]
+
+y_train = y_val[:-9]
+Y_val = y_train.values
+
+Y_val = np.argmax(Y_val, axis=0)
+print(Y_val)
+
 print("x_val.shape, y_val.shape :", x_val.shape, y_val.shape)
 print("y_val.columns :", y_val.columns.tolist())
 
-model = tf.keras.Sequential()
 model = Sequential()
-model.add(LSTM(64, input_shape=(26, 1), return_sequences=True))
-model.add(LSTM(32, return_sequences=True))
-model.add(LSTM(16))
+model.add(LSTM(64, input_shape=(10, 26), return_sequences=True))
+model.add(LSTM(32, return_sequences=False))
 model.add(Dense(5, activation='softmax'))
-model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 model.summary()
-history = model.fit(X_train, Y, batch_size=30000, epochs=20, validation_data=(x_val, y_val))
+history = model.fit(X, Y, batch_size=30000, epochs=4, validation_data=(X_val, Y_val))
 
 y_true = test_df['Disease category'] - 1
 y_pred = []
 for id in test_df['ID'].tolist():
     mfccs_feature = audio_to_mfccs(test_df[test_df['ID'] == id]['wav_path'].values[0])
     df = pd.DataFrame(mfccs_feature)
-    frame_pred = model.predict(df)
+
+    time_step = 10
+    feature = 26
+    n_samples = df.shape[0] - time_step + 1
+    trust = np.zeros((n_samples, time_step, feature))
+    for i in range(n_samples):
+        trust[i] = df[i:i + time_step]
+
+    frame_pred = model.predict(trust)
+
     frame_pred_results = frame_pred.argmax(axis=1)
 
     person_pred = np.array([np.sum(frame_pred_results == 0), np.sum(frame_pred_results == 1),
@@ -175,6 +208,4 @@ for id in test_df['ID'].tolist():
                             np.sum(frame_pred_results == 4)]).argmax()  # 注意!如三類別相同票數，預測會為0
     y_pred.append(person_pred)
 
-y_pred = np.array(y_pred)
-y_pred = y_pred.reshape(-1, 1)
 print(y_pred)

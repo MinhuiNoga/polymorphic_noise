@@ -138,8 +138,7 @@ n_samples = mfcc_normalized.shape[0] - time_step + 1
 X = np.zeros((n_samples, time_step, feature))
 
 for i in range(n_samples):
-    X[i] = mfcc_normalized[i:i+time_step]
-
+    X[i] = mfcc_normalized[i:i + time_step]
 
 '''
 T = 5
@@ -162,12 +161,11 @@ y = y - 1
 
 y = np_utils.to_categorical(y, num_classes=5)
 
-print("x",X.shape)
-print("y",y.shape)
+print("x", X.shape)
+print("y", y.shape)
 
 import numpy as np
 from keras.utils import np_utils
 from keras.layers import Input, Dense, Dropout, Embedding, Concatenate, Flatten
 from keras.models import Model
 from keras.callbacks import EarlyStopping
-
